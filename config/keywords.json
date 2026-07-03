@@ -10,6 +10,10 @@
         "Embodied AI", "엣지 AI", "Edge AI"
       ]
     },
+    "digital_human": {
+      "label": "디지털휴먼/가상인간",
+      "keywords": ["디지털휴먼", "버추얼휴먼", "가상인간", "AI휴먼", "메타휴먼"]
+    },
     "robotics_physical": {
       "label": "로보틱스/피지컬AI",
       "keywords": [
@@ -60,6 +64,11 @@
       }
     }
   },
+  "affiliate_equity_monitoring": {
+    "label": "관계기업 지분·공시",
+    "note": "이모션웨이브/리마엔터테인먼트/엔백스의 지분 변동·최대주주 변경 등을 DART 공시 + 뉴스로 이중 추적. 정확한 법인명으로 조정 필요.",
+    "companies": ["이모션웨이브", "리마엔터테인먼트", "엔백스"]
+  },
   "research_sources": {
     "note": "뉴스 API로 잘 안 잡히는 정책/기관/증권사 리서치는 발행처 자체를 소스로 별도 수집합니다. 주로 09시 발송에 배치.",
     "policy_institutes": ["KDI", "산업연구원(KIET)", "NIA", "KISDI", "소프트웨어정책연구소(SPRi)", "한국콘텐츠진흥원(KOCCA)"],
@@ -78,12 +87,6 @@
       }
     }
   },
-  "company_watchlist": {
-    "label": "경쟁사/유사기업 워치리스트",
-    "note": "리마엔터테인먼트/이모션웨이브와 인접 산업(피지컬AI x 엔터테크 x IP/디지털휴먼) 기업 동향을 우선 트래킹. 항상 최우선순위로 발송에 포함.",
-    "companies": ["갤럭시코퍼레이션", "네오사피엔스", "시나몬", "버스에잇", "모팩스튜디오"],
-    "review_note": "위 5개사는 검색 중 발견한 '엔터테크/디지털휴먼' 인접 기업 후보입니다. 성현님이 아시는 다른 경쟁사·벤치마크 기업이 있으면 추가로 알려주세요."
-  },
   "send_schedule_kst": ["09:00", "12:00", "18:00", "21:00"],
   "slot_focus": {
     "09:00": "해외 야간뉴스 + 국내 개장전 이슈 + 정책보고서/리서치",
@@ -91,5 +94,6 @@
     "18:00": "국내 실시간 이슈 + 장마감 시황",
     "21:00": "하루 총정리 + 해외 프리마켓"
   },
-  "max_items_per_send": 9
+  "max_items_per_send": 9,
+  "html_report_base_url": "https://mongzart7056.github.io/kakao-news-digest"
 }
