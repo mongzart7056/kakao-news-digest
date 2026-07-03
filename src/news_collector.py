@@ -115,11 +115,19 @@ def apply_noise_filter(items, category_conf):
     return filtered
 
 
+def _normalize_title(title):
+    """중복 판별용 제목 정규화: 언론사 접미사(- OO뉴스, - OO경제 등) 제거, 공백/기호 정리."""
+    import re
+    t = re.sub(r"\s*-\s*[가-힣A-Za-z0-9]+(뉴스|경제|일보|신문|저널|데일리|타임즈|타임스|투데이)?\s*$", "", title)
+    t = re.sub(r"[^\w가-힣]", "", t)  # 공백/특수문자 제거
+    return t.strip().lower()
+
+
 def dedupe(items):
     seen = set()
     out = []
     for it in sorted(items, key=lambda x: x["published"], reverse=True):
-        key = it["title"][:40]
+        key = _normalize_title(it["title"])[:25]
         if key in seen:
             continue
         seen.add(key)
@@ -181,26 +189,31 @@ def fetch_generic_rss(url, source_label):
     return items
 
 
-def collect_institute_rss(verified_rss_conf, since_hours=14):
+def collect_affiliate_equity_news(company_names, since_hours=24):
+    """관계기업(비상장 포함) 지분 변동 관련 뉴스. DART에 안 걸리는 비상장사 대비 백업 채널."""
+    EQUITY_TERMS = ["지분", "최대주주", "매각", "인수", "증자", "지분매입", "지분율"]
+    all_items = []
+    for name in company_names:
+        for term in EQUITY_TERMS:
+            query = f"{name} {term}"
+            all_items += search_naver_news(query, display=3)
+        time.sleep(0.2)
+
+    filtered = []
+    for it in all_items:
+        text = it["title"] + " " + it["summary"]
+        if not any(name in text for name in company_names):
+            continue
+        filtered.append(it)
+
+    cutoff = datetime.now(KST) - timedelta(hours=since_hours)
+    recent = [it for it in filtered if it["published"] >= cutoff]
+    return dedupe(recent)
     """검증된 기관 RSS(KOCCA 등)에서 최근 항목만 수집. 09시 슬롯 위주로 사용."""
     all_items = []
     kocca_feeds = verified_rss_conf.get("kocca", {})
     for label, url in kocca_feeds.items():
         all_items += fetch_generic_rss(url, f"KOCCA·{label}")
-        time.sleep(0.2)
-    cutoff = datetime.now(KST) - timedelta(hours=since_hours)
-    recent = [it for it in all_items if it["published"] >= cutoff]
-    return dedupe(recent)
-
-
-def collect_company_watchlist(companies, since_hours=4, global_coverage=True):
-    """경쟁사/유사기업(예: 갤럭시코퍼레이션) 이름 기반 뉴스 수집. 항상 최우선 순위로 취급."""
-    all_items = []
-    for name in companies:
-        all_items += search_naver_news(name, display=5)
-        all_items += search_google_news_rss(name, lang="ko", country="KR")
-        if global_coverage:
-            all_items += search_google_news_rss(name, lang="en", country="US")
         time.sleep(0.2)
     cutoff = datetime.now(KST) - timedelta(hours=since_hours)
     recent = [it for it in all_items if it["published"] >= cutoff]
