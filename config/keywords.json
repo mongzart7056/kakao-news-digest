@@ -1,0 +1,95 @@
+{
+  "categories": {
+    "ai_core": {
+      "label": "AI/기술",
+      "keywords": [
+        "인공지능", "AI", "Artificial Intelligence", "에이전트", "Agent", "에이전틱 AI", "Agentic AI",
+        "피지컬 AI", "Physical AI", "생성형 인공지능", "생성형 AI", "Generative AI",
+        "소버린 AI", "Sovereign AI", "파운데이션 모델", "Foundation Model", "LLM", "sLLM",
+        "멀티모달", "Multimodal", "추론형 AI", "Reasoning AI", "RAG", "합성데이터", "Synthetic Data",
+        "Embodied AI", "엣지 AI", "Edge AI"
+      ]
+    },
+    "robotics_physical": {
+      "label": "로보틱스/피지컬AI",
+      "keywords": [
+        "로보틱스", "Robotics", "휴머노이드", "Humanoid", "Sim2Real", "Software-Defined Robot",
+        "다크팩토리", "스마트팩토리", "Smart Factory", "디지털 트윈", "Digital Twin",
+        "AIoT", "가상융합", "VR", "XR", "MR", "AR"
+      ]
+    },
+    "ai_infra": {
+      "label": "AI반도체/인프라",
+      "keywords": ["GPU", "NPU", "온디바이스", "On-device", "HBM", "AI 반도체", "AI 인프라", "데이터센터"]
+    },
+    "web3_finance": {
+      "label": "Web3/블록체인/금융",
+      "keywords": [
+        "블록체인", "웹3", "Web3", "스테이블코인", "STO", "DeFi", "NFT", "RWA", "DePIN", "CBDC"
+      ]
+    },
+    "ax_dx_policy": {
+      "label": "AX/DX/정책",
+      "keywords": ["AX", "DT", "Artificial Intelligence Transformation", "Digital Transformation", "공공AX"]
+    },
+    "ipo_investment": {
+      "label": "IPO/투자",
+      "keywords": [
+        "IPO", "상장", "기술특례상장", "투자유치", "시리즈A", "시리즈B", "시리즈C",
+        "벤처투자", "M&A", "프리IPO", "밸류에이션"
+      ]
+    },
+    "policy_fund": {
+      "label": "정책자금/지원사업",
+      "keywords": [
+        "정책자금", "정책금융", "모태펀드", "TIPS", "팁스", "R&D 지원사업", "예비유니콘",
+        "딥테크펀드", "문화체육관광부 지원사업", "중소벤처기업부", "창업지원사업",
+        "정부출연연구기관 사업공고", "예산안"
+      ]
+    },
+    "ip_kculture": {
+      "label": "IP/K-Culture/저작권",
+      "keywords": [
+        "K-콘텐츠", "한류", "콘텐츠 IP", "콘텐츠 수출", "콘텐츠 라이선싱", "OSMU",
+        "캐릭터 IP", "웹툰 IP", "K-POP", "실감콘텐츠", "K-콘텐츠 저작권", "콘텐츠IP보증"
+      ],
+      "noise_filter": {
+        "note": "단독 키워드(특허/상표/저작권)는 결합형으로만 검색하고, 아래 제외어가 포함된 기사는 걸러냅니다.",
+        "require_combo_with": ["콘텐츠", "K-", "웹툰", "IP", "한류"],
+        "exclude_terms": ["손해배상", "소송", "고소", "기소", "판결", "형사", "구속"]
+      }
+    }
+  },
+  "research_sources": {
+    "note": "뉴스 API로 잘 안 잡히는 정책/기관/증권사 리서치는 발행처 자체를 소스로 별도 수집합니다. 주로 09시 발송에 배치.",
+    "policy_institutes": ["KDI", "산업연구원(KIET)", "NIA", "KISDI", "소프트웨어정책연구소(SPRi)", "한국콘텐츠진흥원(KOCCA)"],
+    "securities_research": ["삼성증권", "미래에셋증권", "한국투자증권", "NH투자증권", "신한투자증권"],
+    "economic_institutes": ["하나금융경영연구소", "KB경영연구소", "LG경영연구원"],
+    "global_consulting": ["McKinsey", "BCG", "Gartner", "IDC", "PwC", "Deloitte"],
+    "corporate_blogs": ["NVIDIA", "OpenAI", "Google DeepMind", "삼성전자", "SK텔레콤"],
+    "verified_rss_feeds": {
+      "note": "직접 접속 확인 완료 (2026.07 기준). 이 외 기관(한국저작권위원회, KDI, 증권사 등)은 공식 RSS/API가 없어 뉴스 검색으로만 커버됩니다.",
+      "kocca": {
+        "지원사업공고": "http://www.kocca.kr/xml/rss/rss_pims.xml",
+        "보도자료": "http://www.kocca.kr/xml/notice/newreport/newrss.xml",
+        "연구보고서": "http://www.kocca.kr/xml/knowledge/research/rss.xml",
+        "해외시장동향분석": "http://www.kocca.kr/xml/knowledge/abroad/rss.xml",
+        "세미나자료": "http://www.kocca.kr/xml/knowledge/seminar/rss_2.xml"
+      }
+    }
+  },
+  "company_watchlist": {
+    "label": "경쟁사/유사기업 워치리스트",
+    "note": "리마엔터테인먼트/이모션웨이브와 인접 산업(피지컬AI x 엔터테크 x IP/디지털휴먼) 기업 동향을 우선 트래킹. 항상 최우선순위로 발송에 포함.",
+    "companies": ["갤럭시코퍼레이션", "네오사피엔스", "시나몬", "버스에잇", "모팩스튜디오"],
+    "review_note": "위 5개사는 검색 중 발견한 '엔터테크/디지털휴먼' 인접 기업 후보입니다. 성현님이 아시는 다른 경쟁사·벤치마크 기업이 있으면 추가로 알려주세요."
+  },
+  "send_schedule_kst": ["09:00", "12:00", "18:00", "21:00"],
+  "slot_focus": {
+    "09:00": "해외 야간뉴스 + 국내 개장전 이슈 + 정책보고서/리서치",
+    "12:00": "국내 실시간 이슈",
+    "18:00": "국내 실시간 이슈 + 장마감 시황",
+    "21:00": "하루 총정리 + 해외 프리마켓"
+  },
+  "max_items_per_send": 9
+}
