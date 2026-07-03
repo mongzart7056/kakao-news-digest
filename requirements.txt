@@ -1,4 +1,0 @@
-# 현재 버전은 Python 표준 라이브러리(urllib, json, xml)만 사용하여 의존성이 없습니다.
-# 추후 확장(예: 형태소 분석, 유사도 기반 중복제거) 시 아래 활용 가능:
-# feedparser
-# python-dateutil
