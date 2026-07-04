@@ -5,6 +5,8 @@ main.py
 2) 09시 슬롯이면 DART 공시/KOCCA RSS도 포함
 3) 카카오톡에는 카테고리별 대표 기사 1건씩만 압축 발송 (메시지 전체가 링크로 동작)
 4) 전체 수집 기사는 HTML 리포트(GitHub Pages)로 생성, 카톡 메시지에서 그 링크로 연결
+5) [추가] 매 실행의 다이제스트를 docs/archive/*.json 으로 누적 저장하여
+   latest.html에서 과거 다이제스트를 드롭다운으로 열람할 수 있게 함
 """
 import os
 import json
@@ -13,11 +15,12 @@ from datetime import datetime, timedelta, timezone
 from news_collector import collect_all, collect_institute_rss, collect_affiliate_equity_news
 from dart_collector import fetch_recent_disclosures, fetch_company_disclosures
 from kakao_sender import send_digest
-from html_report import generate_html
+from html_report import generate_html, generate_archive_json
 
 KST = timezone(timedelta(hours=9))
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config", "keywords.json")
 DOCS_DIR = os.path.join(os.path.dirname(__file__), "..", "docs")
+ARCHIVE_DIR = os.path.join(DOCS_DIR, "archive")
 
 # 슬롯 간 간격(시간) - 09/12/18/21시 실행 기준. 09시는 전날 21시 이후 공백 커버 위해 넉넉히.
 SLOT_LOOKBACK_HOURS = {9: 14, 12: 3, 18: 6, 21: 3}
@@ -106,12 +109,50 @@ def build_digest(conf, now_kst):
     return header, kakao_lines, sections, generated_at_str
 
 
-def write_html_report(sections, generated_at_str, base_url):
+def _archive_slug(now_kst):
+    """아카이브 파일명에 쓸 타임스탬프 slug. 초 단위까지 넣어 같은 분 내 재실행도 구분."""
+    return now_kst.strftime("%Y%m%d_%H%M%S")
+
+
+def write_archive(sections, generated_at_str, now_kst):
+    """이번 실행의 다이제스트를 docs/archive/{slug}.json 으로 저장하고
+    docs/archive/index.json 목록 맨 앞에 추가. 기존 항목은 절대 삭제하지 않음
+    (과거 내역을 계속 누적 보관)."""
+    os.makedirs(ARCHIVE_DIR, exist_ok=True)
+
+    slug = _archive_slug(now_kst)
+    fname = f"{slug}.json"
+    snapshot_path = os.path.join(ARCHIVE_DIR, fname)
+    with open(snapshot_path, "w", encoding="utf-8") as f:
+        f.write(generate_archive_json(generated_at_str, sections))
+
+    index_path = os.path.join(ARCHIVE_DIR, "index.json")
+    entries = []
+    if os.path.exists(index_path):
+        try:
+            with open(index_path, encoding="utf-8") as f:
+                entries = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            entries = []
+
+    # 혹시 같은 slug로 재실행된 경우 중복 방지 후 맨 앞(최신순)에 추가
+    entries = [e for e in entries if e.get("file") != fname]
+    entries.insert(0, {"file": fname, "label": generated_at_str})
+
+    with open(index_path, "w", encoding="utf-8") as f:
+        json.dump(entries, f, ensure_ascii=False, indent=2)
+
+
+def write_html_report(sections, generated_at_str, base_url, now_kst):
     os.makedirs(DOCS_DIR, exist_ok=True)
     html = generate_html(generated_at_str, sections)
     out_path = os.path.join(DOCS_DIR, "latest.html")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
+
+    # 과거 다이제스트 보관용 스냅샷 저장 (latest.html 생성 성공 시에만)
+    write_archive(sections, generated_at_str, now_kst)
+
     return base_url.rstrip("/") + "/latest.html"
 
 
@@ -126,7 +167,7 @@ def main():
         return
 
     base_url = conf.get("html_report_base_url", "").strip()
-    report_url = write_html_report(sections, generated_at_str, base_url) if base_url else None
+    report_url = write_html_report(sections, generated_at_str, base_url, now_kst) if base_url else None
 
     if not kakao_lines:
         print("카톡에 담을 대표 기사가 없습니다 (HTML 리포트만 생성됨).")
