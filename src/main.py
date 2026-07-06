@@ -2,7 +2,7 @@
 main.py
 매일 09/12/15/18/21/00시(KST)에 GitHub Actions cron으로 실행되는 엔트리포인트.
 1) 카테고리별 뉴스 수집
-2) 09시 슬롯이면 DART 공시/KOCCA RSS도 포함
+2) DART 정기공시를 포함하고, 09시 슬롯이면 KOCCA RSS도 포함
 3) 카카오톡에는 카테고리별 대표 기사 1건씩만 압축 발송 (메시지 전체가 링크로 동작)
 4) 전체 수집 기사는 HTML 리포트(GitHub Pages)로 생성, 카톡 메시지에서 그 링크로 연결
 5) [추가] 매 실행의 다이제스트를 docs/archive/*.json 으로 누적 저장하여
@@ -13,7 +13,7 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from news_collector import collect_all, collect_institute_rss
-from dart_collector import fetch_recent_disclosures
+from dart_collector import fetch_target_periodic_reports
 from kakao_sender import send_digest
 from html_report import generate_html, generate_archive_json
 
@@ -69,16 +69,16 @@ def build_digest(conf, now_kst):
 
     collected = collect_all(conf, since_hours=lookback)
 
-    disclosure_items, institute_items = [], []
+    disclosure_items = fetch_target_periodic_reports(conf.get("disclosure_monitoring", {}))
+    institute_items = []
     if hour == 9:
-        disclosure_items = fetch_recent_disclosures(since_hours=lookback)
         institute_items = collect_institute_rss(
             conf.get("research_sources", {}).get("verified_rss_feeds", {}), since_hours=lookback
         )
 
     # --- 카톡용: 섹션별 대표 1건만 ---
     kakao_lines = []
-    if disclosure_items:
+    if disclosure_items and hour == 9:
         kakao_lines.append(format_kakao_line(disclosure_items[0], "공시"))
     if institute_items:
         kakao_lines.append(format_kakao_line(institute_items[0], "기관"))
