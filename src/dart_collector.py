@@ -98,13 +98,18 @@ def _company_aliases(name, alias_map):
     return aliases
 
 
-def resolve_companies(company_names, alias_map=None):
+def resolve_companies(company_names, alias_map=None, stock_code_map=None):
     """설정 회사명을 DART corp_code로 해석. 상장사(stock_code 존재)를 우선합니다."""
     alias_map = alias_map or {}
+    stock_code_map = stock_code_map or {}
     corp_codes = fetch_corp_codes()
     by_name = {}
+    by_stock = {}
     for record in corp_codes:
         by_name.setdefault(_normalize_name(record["corp_name"]), []).append(record)
+        stock_code = record.get("stock_code", "")
+        if stock_code:
+            by_stock.setdefault(stock_code.zfill(6), []).append(record)
 
     resolved, unresolved = [], []
     seen_codes = set()
@@ -112,6 +117,9 @@ def resolve_companies(company_names, alias_map=None):
         candidates = []
         for alias in _company_aliases(name, alias_map):
             candidates.extend(by_name.get(_normalize_name(alias), []))
+        stock_code = str(stock_code_map.get(name, "")).strip()
+        if stock_code:
+            candidates.extend(by_stock.get(stock_code.zfill(6), []))
 
         if not candidates:
             unresolved.append(name)
@@ -203,8 +211,9 @@ def fetch_target_periodic_reports(disclosure_conf):
     report_types = disclosure_conf.get("report_types", DEFAULT_REPORT_TYPES)
     target_periods = disclosure_conf.get("target_periods", [])
     alias_map = disclosure_conf.get("company_aliases", {})
+    stock_code_map = disclosure_conf.get("company_stock_codes", {})
 
-    companies = resolve_companies(company_names, alias_map=alias_map)
+    companies = resolve_companies(company_names, alias_map=alias_map, stock_code_map=stock_code_map)
     if not companies:
         return []
 
