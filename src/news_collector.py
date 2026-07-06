@@ -118,11 +118,15 @@ def apply_noise_filter(items, category_conf):
     require_any = nf.get("require_any_terms", [])
     exclude = nf.get("exclude_terms", [])
     include_query = nf.get("include_query_in_filter", False)
+    query_context_terms = nf.get("query_context_terms", [])
     filtered = []
     for it in items:
         text_parts = [it["title"], it["summary"]]
-        if include_query:
-            text_parts.append(it.get("query", ""))
+        query = it.get("query", "")
+        if include_query and (
+            not query_context_terms or _has_any(query, query_context_terms)
+        ):
+            text_parts.append(query)
         text = " ".join(text_parts).lower()
         if any(x.lower() in text for x in exclude):
             continue
