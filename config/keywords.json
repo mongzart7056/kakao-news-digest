@@ -12,7 +12,26 @@
     },
     "digital_human": {
       "label": "디지털휴먼/가상인간",
-      "keywords": ["디지털휴먼", "버추얼휴먼", "가상인간", "AI휴먼", "메타휴먼"]
+      "min_lookback_hours": 72,
+      "keywords": [
+        "디지털휴먼", "디지털 휴먼", "버추얼휴먼", "버추얼 휴먼",
+        "가상인간", "가상 인간", "가상 휴먼", "AI휴먼",
+        "AI 버추얼 휴먼", "버추얼 휴먼 콘텐츠", "site:science.ytn.co.kr 버추얼 휴먼",
+        "\"버추얼 휴먼\" \"AI로 만드는 콘텐츠\"",
+        "메타휴먼", "메타 휴먼", "\"virtual human\" AI avatar", "\"digital human\" avatar"
+      ],
+      "noise_filter": {
+        "include_query_in_filter": true,
+        "require_any_terms": [
+          "디지털휴먼", "디지털 휴먼", "버추얼휴먼", "버추얼 휴먼",
+          "가상인간", "가상 인간", "가상 휴먼", "AI휴먼",
+          "메타휴먼", "메타 휴먼", "virtual human", "digital human"
+        ],
+        "exclude_terms": [
+          "수질", "아산호", "하천", "호수", "충남도", "수생태", "농업용수",
+          "교통사고", "범죄", "날씨", "부동산", "채용", "인사"
+        ]
+      }
     },
     "robotics_physical": {
       "label": "로보틱스/피지컬AI",
@@ -46,31 +65,113 @@
     "policy_fund": {
       "label": "정책자금/지원사업",
       "source_type": "policy_notices",
+      "min_lookback_hours": 72,
       "keywords": [
         "지원사업 공고", "정부과제 공고", "R&D 과제 공고", "용역 공고", "입찰 공고",
         "제안요청서", "수행기관 모집", "참여기업 모집", "창업지원사업 모집",
         "정책자금 신청", "TIPS 공고", "팁스 공고", "모태펀드 출자 공고",
-        "디지털콘텐츠 지원사업 공고", "문화기술 연구개발 공고"
+        "디지털콘텐츠 지원사업 공고", "문화기술 연구개발 공고",
+        "IRIS 사업공고", "기업마당 지원사업 공고", "중소기업기술정보진흥원 사업공고",
+        "과학기술정보통신부 사업공고", "문화체육관광부 입찰 공고",
+        "중소벤처기업부 사업공고", "산업통상자원부 사업공고", "지자체 지원사업 공고"
       ],
       "notice_terms": [
         "공고", "모집", "공모", "지원사업", "사업공고", "과제공고", "정부과제",
-        "R&D", "연구개발", "입찰", "용역", "제안요청서", "RFP", "수행기관", "참여기업"
+        "R&D", "연구개발", "입찰", "용역", "제안요청서", "RFP", "수행기관", "참여기업",
+        "수요기업", "입주기업", "참가기업", "신규과제", "시행계획", "바우처", "정책자금"
       ],
       "exclude_terms": ["보도자료", "인터뷰", "칼럼", "인사", "채용"],
       "rss_feeds": {
         "KOCCA·지원사업공고": "http://www.kocca.kr/xml/rss/rss_pims.xml"
       },
+      "html_notice_sources": [
+        {
+          "label": "IRIS·범부처 사업공고",
+          "url": "https://www.iris.go.kr/main.do",
+          "base_url": "https://www.iris.go.kr",
+          "list_url": "https://www.iris.go.kr/contents/retrieveBsnsAncmBtinSituListView.do",
+          "parser": "iris_main",
+          "max_items": 12,
+          "force_notice": true
+        },
+        {
+          "label": "기업마당·지원사업공고",
+          "url": "https://www.bizinfo.go.kr/web/lay1/bbs/S1T122C128/AS/74/list.do",
+          "base_url": "https://www.bizinfo.go.kr",
+          "parser": "table_links",
+          "max_items": 12,
+          "force_notice": true
+        },
+        {
+          "label": "SMTECH·중소기업 R&D 사업공고",
+          "url": "https://www.smtech.go.kr/front/ifg/no/notice02_list.do",
+          "base_url": "https://www.smtech.go.kr",
+          "parser": "table_links",
+          "max_items": 8,
+          "force_notice": true
+        },
+        {
+          "label": "중소벤처기업부·사업공고",
+          "url": "https://www.mss.go.kr/site/smba/ex/bbs/List.do?cbIdx=310",
+          "base_url": "https://www.mss.go.kr",
+          "parser": "mss_board",
+          "max_items": 8,
+          "force_notice": true
+        },
+        {
+          "label": "문화체육관광부·입찰정보",
+          "url": "https://www.mcst.go.kr/site/s_notice/notice/bidList.jsp",
+          "base_url": "https://www.mcst.go.kr/site/s_notice/notice/",
+          "parser": "table_links",
+          "max_items": 8,
+          "force_notice": true
+        },
+        {
+          "label": "문화체육관광부·공지공고",
+          "url": "https://www.mcst.go.kr/site/s_notice/notice/noticeList.jsp",
+          "base_url": "https://www.mcst.go.kr/site/s_notice/notice/",
+          "parser": "table_links",
+          "max_items": 6
+        },
+        {
+          "label": "NIPA·사업공고",
+          "url": "https://www.nipa.kr/home/2-2?curPage=1",
+          "base_url": "https://www.nipa.kr",
+          "parser": "table_links",
+          "max_items": 8,
+          "force_notice": true
+        }
+      ],
       "notice_searches": [
+        "site:iris.go.kr 사업공고 인공지능 OR 디지털",
+        "site:iris.go.kr 사업공고 문화체육관광부 OR 중소벤처기업부 OR 산업통상자원부",
         "site:bizinfo.go.kr 지원사업 공고 AI",
+        "site:bizinfo.go.kr 지원사업 공고 콘텐츠",
+        "site:bizinfo.go.kr 지자체 지원사업 공고 디지털콘텐츠",
+        "site:smtech.go.kr 기술개발사업 공고",
+        "site:mss.go.kr 중소벤처기업부 사업 공고",
+        "site:mcst.go.kr 입찰 공고 용역 콘텐츠",
+        "site:mcst.go.kr 지원사업 공고 문화콘텐츠",
+        "site:motie.go.kr 산업통상자원부 사업 공고",
+        "site:keit.re.kr 사업공고 산업기술 R&D",
+        "site:kiat.or.kr 사업공고 산업기술 지원사업",
+        "site:msit.go.kr 과학기술정보통신부 사업 공고",
+        "site:nrf.re.kr 신규과제 공모 과학기술정보통신부",
+        "site:nipa.kr 지원사업 공고 디지털콘텐츠",
+        "site:iitp.kr 정보통신방송 연구개발사업 공고",
         "site:k-startup.go.kr 창업지원사업 모집 공고",
         "site:ntis.go.kr 정부과제 공고 인공지능",
-        "site:smtech.go.kr 기술개발사업 공고",
-        "site:nipa.kr 지원사업 공고 디지털콘텐츠",
         "site:kocca.kr 지원사업 공고 콘텐츠",
         "site:g2b.go.kr 용역 공고 인공지능",
         "site:g2b.go.kr 제안요청서 디지털콘텐츠",
         "site:ezone.iitp.kr 정보통신방송 연구개발사업 공고",
-        "site:mss.go.kr 중소벤처기업부 사업 공고"
+        "site:seoul.go.kr 지원사업 공고 AI 콘텐츠",
+        "site:gg.go.kr 지원사업 공고 콘텐츠",
+        "site:busan.go.kr 지원사업 공고 디지털",
+        "site:incheon.go.kr 지원사업 공고 콘텐츠",
+        "site:daejeon.go.kr 지원사업 공고 과학기술",
+        "site:dip.or.kr 지원사업 공고 디지털콘텐츠",
+        "site:btp.or.kr 지원사업 공고 콘텐츠"
       ],
       "include_naver_news_backup": false
     },
