@@ -2,14 +2,20 @@ name: Kakao News Digest
 
 on:
   schedule:
-    - cron: "0 0 * * *"
-    - cron: "0 3 * * *"
-    - cron: "0 9 * * *"
-    - cron: "0 12 * * *"
+    - cron: "0 0 * * *"   # 09:00 KST
+    - cron: "0 3 * * *"   # 12:00 KST
+    - cron: "0 6 * * *"   # 15:00 KST
+    - cron: "0 9 * * *"   # 18:00 KST
+    - cron: "0 12 * * *"  # 21:00 KST
+    - cron: "0 15 * * *"  # 00:00 KST
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: kakao-news-digest
+  cancel-in-progress: false
 
 jobs:
   send-digest:
@@ -34,6 +40,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/latest.html || true
+          git add docs || true
           git diff --staged --quiet || git commit -m "docs: update digest report"
           git push

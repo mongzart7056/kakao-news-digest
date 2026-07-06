@@ -1,6 +1,6 @@
 """
 main.py
-매일 09/12/18/21시(KST)에 GitHub Actions cron으로 실행되는 엔트리포인트.
+매일 09/12/15/18/21/00시(KST)에 GitHub Actions cron으로 실행되는 엔트리포인트.
 1) 카테고리별 뉴스 수집
 2) 09시 슬롯이면 DART 공시/KOCCA RSS도 포함
 3) 카카오톡에는 카테고리별 대표 기사 1건씩만 압축 발송 (메시지 전체가 링크로 동작)
@@ -21,13 +21,15 @@ KST = timezone(timedelta(hours=9))
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config", "keywords.json")
 DOCS_DIR = os.path.join(os.path.dirname(__file__), "..", "docs")
 ARCHIVE_DIR = os.path.join(DOCS_DIR, "archive")
+ARCHIVE_RETENTION_DAYS = int(os.environ.get("ARCHIVE_RETENTION_DAYS", "3"))
 
-# 슬롯 간 간격(시간) - 09/12/18/21시 실행 기준. 09시는 전날 21시 이후 공백 커버 위해 넉넉히.
-SLOT_LOOKBACK_HOURS = {9: 14, 12: 3, 18: 6, 21: 3}
+# 슬롯 간 간격(시간) - 3시간 슬롯은 실행 지연을 감안해 4시간, 09시는 자정 이후 공백 커버.
+SLOT_LOOKBACK_HOURS = {0: 4, 9: 10, 12: 4, 15: 4, 18: 4, 21: 4}
 
 CATEGORY_PRIORITY = [
     "ipo_investment", "policy_fund", "ai_core", "digital_human", "robotics_physical",
-    "ai_infra", "ip_kculture", "web3_finance", "ax_dx_policy",
+    "ai_infra", "ip_kculture", "performance_music_digital_content",
+    "web3_finance", "ax_dx_policy",
 ]
 
 
@@ -114,10 +116,40 @@ def _archive_slug(now_kst):
     return now_kst.strftime("%Y%m%d_%H%M%S")
 
 
-def write_archive(sections, generated_at_str, now_kst):
+def _archive_datetime(fname):
+    """YYYYMMDD_HHMMSS.json 파일명에서 KST datetime을 복원. 실패하면 None."""
+    try:
+        stem = os.path.splitext(os.path.basename(fname))[0]
+        return datetime.strptime(stem, "%Y%m%d_%H%M%S").replace(tzinfo=KST)
+    except (TypeError, ValueError):
+        return None
+
+
+def _prune_archives(entries, now_kst, retention_days):
+    """index와 파일을 retention_days 이내 항목만 남기도록 정리."""
+    cutoff = now_kst - timedelta(days=retention_days)
+    kept = []
+    for entry in entries:
+        fname = entry.get("file", "")
+        dt = _archive_datetime(fname)
+        if dt is None or dt >= cutoff:
+            kept.append(entry)
+
+    for fname in os.listdir(ARCHIVE_DIR):
+        if fname == "index.json" or not fname.endswith(".json"):
+            continue
+        dt = _archive_datetime(fname)
+        if dt is not None and dt < cutoff:
+            try:
+                os.remove(os.path.join(ARCHIVE_DIR, fname))
+            except OSError as e:
+                print(f"[archive] 오래된 파일 삭제 실패: {fname} ({e})")
+    return kept
+
+
+def write_archive(sections, generated_at_str, now_kst, retention_days=ARCHIVE_RETENTION_DAYS):
     """이번 실행의 다이제스트를 docs/archive/{slug}.json 으로 저장하고
-    docs/archive/index.json 목록 맨 앞에 추가. 기존 항목은 절대 삭제하지 않음
-    (과거 내역을 계속 누적 보관)."""
+    docs/archive/index.json 목록 맨 앞에 추가. 보존 기간은 기본 3일."""
     os.makedirs(ARCHIVE_DIR, exist_ok=True)
 
     slug = _archive_slug(now_kst)
@@ -138,12 +170,13 @@ def write_archive(sections, generated_at_str, now_kst):
     # 혹시 같은 slug로 재실행된 경우 중복 방지 후 맨 앞(최신순)에 추가
     entries = [e for e in entries if e.get("file") != fname]
     entries.insert(0, {"file": fname, "label": generated_at_str})
+    entries = _prune_archives(entries, now_kst, retention_days)
 
     with open(index_path, "w", encoding="utf-8") as f:
         json.dump(entries, f, ensure_ascii=False, indent=2)
 
 
-def write_html_report(sections, generated_at_str, base_url, now_kst):
+def write_html_report(sections, generated_at_str, base_url, now_kst, retention_days=ARCHIVE_RETENTION_DAYS):
     os.makedirs(DOCS_DIR, exist_ok=True)
     html = generate_html(generated_at_str, sections)
     out_path = os.path.join(DOCS_DIR, "latest.html")
@@ -151,7 +184,7 @@ def write_html_report(sections, generated_at_str, base_url, now_kst):
         f.write(html)
 
     # 과거 다이제스트 보관용 스냅샷 저장 (latest.html 생성 성공 시에만)
-    write_archive(sections, generated_at_str, now_kst)
+    write_archive(sections, generated_at_str, now_kst, retention_days=retention_days)
 
     return base_url.rstrip("/") + "/latest.html"
 
@@ -162,16 +195,12 @@ def main():
     header, kakao_lines, sections, generated_at_str = build_digest(conf, now_kst)
 
     total_items = sum(len(items) for _, items in sections)
-    if total_items == 0:
-        print("발송할 신규 기사가 없습니다.")
-        return
-
     base_url = conf.get("html_report_base_url", "").strip()
-    report_url = write_html_report(sections, generated_at_str, base_url, now_kst) if base_url else None
+    retention_days = int(conf.get("archive_retention_days", ARCHIVE_RETENTION_DAYS))
+    report_url = write_html_report(sections, generated_at_str, base_url, now_kst, retention_days) if base_url else None
 
     if not kakao_lines:
-        print("카톡에 담을 대표 기사가 없습니다 (HTML 리포트만 생성됨).")
-        return
+        kakao_lines = ["신규 수집 항목이 없습니다."]
 
     footer = f"\n\n📎 전체 {total_items}건 보기: {report_url}" if report_url else ""
     body = header + "\n\n" + "\n".join(kakao_lines) + footer

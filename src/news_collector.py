@@ -16,6 +16,11 @@ KST = timezone(timedelta(hours=9))
 NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "")
 NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
 
+DEFAULT_POLICY_NOTICE_TERMS = [
+    "공고", "모집", "공모", "지원사업", "사업공고", "과제공고", "정부과제",
+    "R&D", "연구개발", "입찰", "용역", "제안요청서", "RFP", "수행기관", "참여기업",
+]
+
 
 def _http_get(url, headers=None):
     req = urllib.request.Request(url, headers=headers or {})
@@ -135,7 +140,54 @@ def dedupe(items):
     return out
 
 
+def _has_any(text, terms):
+    haystack = (text or "").lower()
+    return any((term or "").lower() in haystack for term in terms)
+
+
+def _is_policy_notice_item(item, category_conf):
+    """정책자금/지원사업은 일반 뉴스보다 실제 공고성 항목만 통과."""
+    text = " ".join([
+        item.get("title", ""),
+        item.get("summary", ""),
+        item.get("link", ""),
+    ])
+    notice_terms = category_conf.get("notice_terms", DEFAULT_POLICY_NOTICE_TERMS)
+    exclude_terms = category_conf.get("exclude_terms", [])
+    if exclude_terms and _has_any(text, exclude_terms):
+        return False
+    return _has_any(text, notice_terms)
+
+
+def collect_policy_notices(category_conf, since_hours=4):
+    """지원사업/정부과제/용역공고성 항목 전용 수집."""
+    all_items = []
+
+    for label, url in category_conf.get("rss_feeds", {}).items():
+        all_items += fetch_generic_rss(url, label)
+        time.sleep(0.2)
+
+    for query in category_conf.get("notice_searches", category_conf.get("keywords", [])):
+        all_items += search_google_news_rss(query, lang="ko", country="KR")
+        time.sleep(0.2)
+
+    if category_conf.get("include_naver_news_backup", False):
+        for query in category_conf.get("notice_searches", category_conf.get("keywords", [])):
+            all_items += search_naver_news(query, display=3)
+            time.sleep(0.2)
+
+    cutoff = datetime.now(KST) - timedelta(hours=since_hours)
+    recent = [
+        it for it in all_items
+        if it["published"] >= cutoff and _is_policy_notice_item(it, category_conf)
+    ]
+    return dedupe(recent)
+
+
 def collect_for_category(cat_key, cat_conf, since_hours=4, global_coverage=True):
+    if cat_conf.get("source_type") == "policy_notices":
+        return collect_policy_notices(cat_conf, since_hours=since_hours)
+
     all_items = []
     for kw in cat_conf["keywords"]:
         all_items += search_naver_news(kw, display=5)
