@@ -206,7 +206,10 @@ def main():
     body = header + "\n\n" + "\n".join(kakao_lines) + footer
 
     ok = send_digest(header="", article_blocks=[body], first_link=report_url)
-    print("완료" if ok else "일부 실패 - 로그 확인 필요")
+    if not ok:
+        print("일부 실패 - 로그 확인 필요")
+        raise SystemExit(1)
+    print("완료")
 
 
 if __name__ == "__main__":
