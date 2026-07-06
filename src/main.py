@@ -50,6 +50,77 @@ def format_kakao_line(item, cat_label):
     return f"📌 [{cat_label}] {title}  ({date_str})"
 
 
+def _parse_archive_display_time(display_time, now_kst):
+    """아카이브의 MM.DD HH:MM 문자열을 HTML item용 datetime으로 복원."""
+    try:
+        parsed = datetime.strptime(f"{now_kst.year}.{display_time}", "%Y.%m.%d %H:%M").replace(tzinfo=KST)
+        if parsed > now_kst + timedelta(days=1):
+            parsed = parsed.replace(year=parsed.year - 1)
+        return parsed
+    except (TypeError, ValueError):
+        return now_kst
+
+
+def _archive_article_to_item(article, now_kst):
+    return {
+        "title": article.get("t", ""),
+        "summary": article.get("d", ""),
+        "source": article.get("s", "DART 정기공시"),
+        "published": _parse_archive_display_time(article.get("tm", ""), now_kst),
+        "link": article.get("link", ""),
+    }
+
+
+def load_cached_disclosures(now_kst):
+    """최근 아카이브에서 공시 섹션을 복원. DART 일시 실패 시 지속 노출용."""
+    index_path = os.path.join(ARCHIVE_DIR, "index.json")
+    entries = []
+    if os.path.exists(index_path):
+        try:
+            with open(index_path, encoding="utf-8") as f:
+                entries = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            entries = []
+
+    if not entries and os.path.isdir(ARCHIVE_DIR):
+        entries = [
+            {"file": fname}
+            for fname in sorted(os.listdir(ARCHIVE_DIR), reverse=True)
+            if fname.endswith(".json") and fname != "index.json"
+        ]
+
+    for entry in entries:
+        fname = entry.get("file", "")
+        if not fname.endswith(".json") or os.path.basename(fname) != fname:
+            continue
+        snapshot_path = os.path.join(ARCHIVE_DIR, fname)
+        try:
+            with open(snapshot_path, encoding="utf-8") as f:
+                snapshot = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        disclosure_articles = [
+            article for article in snapshot.get("articles", [])
+            if article.get("c") == "공시"
+        ]
+        if disclosure_articles:
+            return [_archive_article_to_item(article, now_kst) for article in disclosure_articles]
+    return []
+
+
+def stable_disclosure_items(fetched_items, now_kst):
+    """정기공시는 뉴스처럼 소멸시키지 않고, 이전 스냅샷보다 줄면 캐시를 유지."""
+    cached_items = load_cached_disclosures(now_kst)
+    if cached_items and len(fetched_items) < len(cached_items):
+        print(
+            f"[dart] 공시 섹션 유지: 이번 조회 {len(fetched_items)}건, "
+            f"최근 아카이브 {len(cached_items)}건"
+        )
+        return cached_items
+    return fetched_items
+
+
 def build_report_sections(conf, collected, disclosure_items, institute_items):
     """HTML 리포트용: 전체 수집 기사를 카테고리 순서대로 묶기."""
     sections = [("공시", disclosure_items)]
@@ -69,7 +140,10 @@ def build_digest(conf, now_kst):
 
     collected = collect_all(conf, since_hours=lookback)
 
-    disclosure_items = fetch_target_periodic_reports(conf.get("disclosure_monitoring", {}))
+    disclosure_items = stable_disclosure_items(
+        fetch_target_periodic_reports(conf.get("disclosure_monitoring", {})),
+        now_kst,
+    )
     institute_items = []
     if hour == 9:
         institute_items = collect_institute_rss(
