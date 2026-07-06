@@ -10,10 +10,14 @@ import urllib.parse
 import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 
 KST = timezone(timedelta(hours=9))
 DART_API_KEY = os.environ.get("DART_API_KEY", "")
+DART_HTTP_TIMEOUT_SECONDS = float(os.environ.get("DART_HTTP_TIMEOUT_SECONDS", "12"))
+DART_CORP_CODE_TIMEOUT_SECONDS = float(os.environ.get("DART_CORP_CODE_TIMEOUT_SECONDS", "20"))
+DART_MAX_WORKERS = int(os.environ.get("DART_MAX_WORKERS", "6"))
 
 CORP_CODE_URL = "https://opendart.fss.or.kr/api/corpCode.xml"
 DISCLOSURE_LIST_URL = "https://opendart.fss.or.kr/api/list.json"
@@ -22,8 +26,8 @@ PERIOD_RE = re.compile(r"\((\d{4}\.\d{2})\)")
 DEFAULT_REPORT_TYPES = ["반기보고서", "분기보고서", "사업보고서"]
 
 
-def _http_get(url):
-    with urllib.request.urlopen(url, timeout=30) as resp:
+def _http_get(url, timeout=DART_HTTP_TIMEOUT_SECONDS):
+    with urllib.request.urlopen(url, timeout=timeout) as resp:
         return resp.read()
 
 
@@ -65,7 +69,7 @@ def fetch_corp_codes():
 
     url = CORP_CODE_URL + "?" + urllib.parse.urlencode({"crtfc_key": DART_API_KEY})
     try:
-        raw = _http_get(url)
+        raw = _http_get(url, timeout=DART_CORP_CODE_TIMEOUT_SECONDS)
         with zipfile.ZipFile(io.BytesIO(raw)) as zf:
             xml_name = zf.namelist()[0]
             xml_raw = zf.read(xml_name)
@@ -201,36 +205,58 @@ def fetch_target_periodic_reports(disclosure_conf):
     alias_map = disclosure_conf.get("company_aliases", {})
 
     companies = resolve_companies(company_names, alias_map=alias_map)
+    if not companies:
+        return []
+
     company_order = {company["corp_code"]: idx for idx, company in enumerate(companies)}
     period_order = {period: idx for idx, period in enumerate(target_periods)}
     report_type_order = {report_type: idx for idx, report_type in enumerate(report_types)}
+    max_workers = max(1, min(int(disclosure_conf.get("max_workers", DART_MAX_WORKERS)), 12))
 
     selected_reports = []
-    for company in companies:
-        reports = fetch_periodic_reports_for_company(
-            company, start_date, end_date, report_types, target_periods
-        )
-        for report in reports:
-            report_name = report.get("report_nm", "")
-            report_type = _report_type(report_name, report_types) or ""
-            period = _report_period(report_name)
-            receipt_no = report.get("rcept_no", "")
-            published = _parse_date(report.get("rcept_dt", ""))
-            corp_name = report.get("corp_name") or company["corp_name"]
-            selected_reports.append({
-                "title": f"[정기공시] {corp_name} - {report_name}",
-                "summary": f"보고기간: {period or '확인 필요'} | 접수일: {published.strftime('%Y.%m.%d')} | 구분: {report_type}",
-                "link": _dart_link(receipt_no),
-                "published": published,
-                "source": "DART 정기공시",
-                "query": "정기공시",
-                "_sort": (
-                    period_order.get(period, len(period_order)),
-                    company_order.get(company["corp_code"], len(company_order)),
-                    report_type_order.get(report_type, len(report_type_order)),
-                    report_name,
-                ),
-            })
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(
+                fetch_periodic_reports_for_company,
+                company,
+                start_date,
+                end_date,
+                report_types,
+                target_periods,
+            ): company
+            for company in companies
+        }
+        for future in as_completed(futures):
+            company = futures[future]
+            try:
+                reports = future.result()
+            except Exception as e:
+                print(f"[dart] {company['corp_name']} 정기공시 처리 실패: {e}")
+                continue
+
+            for report in reports:
+                report_name = report.get("report_nm", "")
+                report_type = _report_type(report_name, report_types) or ""
+                period = _report_period(report_name)
+                if not report_type or (target_periods and period not in target_periods):
+                    continue
+                receipt_no = report.get("rcept_no", "")
+                published = _parse_date(report.get("rcept_dt", ""))
+                corp_name = report.get("corp_name") or company["corp_name"]
+                selected_reports.append({
+                    "title": f"[정기공시] {corp_name} - {report_name}",
+                    "summary": f"보고기간: {period or '확인 필요'} | 접수일: {published.strftime('%Y.%m.%d')} | 구분: {report_type}",
+                    "link": _dart_link(receipt_no),
+                    "published": published,
+                    "source": "DART 정기공시",
+                    "query": "정기공시",
+                    "_sort": (
+                        period_order.get(period, len(period_order)),
+                        company_order.get(company["corp_code"], len(company_order)),
+                        report_type_order.get(report_type, len(report_type_order)),
+                        report_name,
+                    ),
+                })
 
     selected_reports.sort(key=lambda item: item["_sort"])
     for item in selected_reports:
