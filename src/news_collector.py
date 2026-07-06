@@ -241,28 +241,6 @@ def fetch_generic_rss(url, source_label):
     return items
 
 
-def collect_affiliate_equity_news(company_names, since_hours=24):
-    """관계기업(비상장 포함) 지분 변동 관련 뉴스. DART에 안 걸리는 비상장사 대비 백업 채널."""
-    EQUITY_TERMS = ["지분", "최대주주", "매각", "인수", "증자", "지분매입", "지분율"]
-    all_items = []
-    for name in company_names:
-        for term in EQUITY_TERMS:
-            query = f"{name} {term}"
-            all_items += search_naver_news(query, display=3)
-        time.sleep(0.2)
-
-    filtered = []
-    for it in all_items:
-        text = it["title"] + " " + it["summary"]
-        if not any(name in text for name in company_names):
-            continue
-        filtered.append(it)
-
-    cutoff = datetime.now(KST) - timedelta(hours=since_hours)
-    recent = [it for it in filtered if it["published"] >= cutoff]
-    return dedupe(recent)
-
-
 def collect_institute_rss(verified_rss_conf, since_hours=14):
     """검증된 기관 RSS(KOCCA 등)에서 최근 항목만 수집. 09시 슬롯 위주로 사용."""
     all_items = []

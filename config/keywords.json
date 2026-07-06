@@ -99,11 +99,6 @@
       }
     }
   },
-  "affiliate_equity_monitoring": {
-    "label": "관계기업 지분·공시",
-    "note": "이모션웨이브/리마엔터테인먼트/엔백스의 지분 변동·최대주주 변경 등을 DART 공시 + 뉴스로 이중 추적. 정확한 법인명으로 조정 필요.",
-    "companies": ["이모션웨이브", "리마엔터테인먼트", "엔백스"]
-  },
   "research_sources": {
     "note": "뉴스 API로 잘 안 잡히는 정책/기관/증권사 리서치는 발행처 자체를 소스로 별도 수집합니다. 주로 09시 발송에 배치.",
     "policy_institutes": ["KDI", "산업연구원(KIET)", "NIA", "KISDI", "소프트웨어정책연구소(SPRi)", "한국콘텐츠진흥원(KOCCA)"],

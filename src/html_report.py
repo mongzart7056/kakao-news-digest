@@ -42,9 +42,19 @@ def _articles_list(sections):
     return articles
 
 
+def _category_list(sections):
+    """sections 순서를 유지한 카테고리 목록. 빈 섹션도 count 0으로 포함."""
+    return [{"c": label, "count": len(items)} for label, items in sections]
+
+
 def _articles_json_for_script(sections):
     """<script> 태그 안에 안전하게 주입할 수 있도록 이스케이프된 JSON 문자열."""
     return json.dumps(_articles_list(sections), ensure_ascii=False).replace("</script>", "<\\/script>")
+
+
+def _categories_json_for_script(sections):
+    """<script> 태그 안에 안전하게 주입할 수 있도록 이스케이프된 카테고리 JSON 문자열."""
+    return json.dumps(_category_list(sections), ensure_ascii=False).replace("</script>", "<\\/script>")
 
 
 def generate_archive_json(generated_at_str, sections):
@@ -57,6 +67,7 @@ def generate_archive_json(generated_at_str, sections):
     payload = {
         "generated_at": generated_at_str,
         "total": total,
+        "categories": _category_list(sections),
         "articles": _articles_list(sections),
     }
     return json.dumps(payload, ensure_ascii=False, indent=2)
@@ -66,6 +77,7 @@ def generate_html(generated_at_str, sections):
     """sections: [(label, [item, ...]), ...] 순서대로 카테고리 레일에 표시"""
     total = sum(len(items) for _, items in sections)
     articles_json = _articles_json_for_script(sections)
+    categories_json = _categories_json_for_script(sections)
     gen_str = _escape(generated_at_str)
 
     return f"""<!DOCTYPE html>
@@ -167,18 +179,25 @@ def generate_html(generated_at_str, sections):
 
 <script>
 const CURRENT_ARTICLES = {articles_json};
+const CURRENT_CATEGORIES = {categories_json};
 const CURRENT_TOTAL = {total};
 const CURRENT_GEN = "{gen_str}";
 
 let ARTICLES = CURRENT_ARTICLES;
+let CATEGORIES = CURRENT_CATEGORIES;
 let active = "전체";
 
+function categoriesFromArticles(articles){{
+  const counts = new Map();
+  articles.forEach(a => counts.set(a.c, (counts.get(a.c) || 0) + 1));
+  return [...counts.entries()].map(([c, count]) => ({{ c, count }}));
+}}
+
 function renderRail(){{
-  const cats = [...new Set(ARTICLES.map(a => a.c))];
   const rail = document.getElementById('rail');
   rail.innerHTML = "";
   rail.appendChild(makeRow("전체", ARTICLES.length));
-  cats.forEach(c => rail.appendChild(makeRow(c, ARTICLES.filter(a => a.c === c).length)));
+  CATEGORIES.forEach(cat => rail.appendChild(makeRow(cat.c, cat.count)));
 }}
 function makeRow(name, count){{
   const el = document.createElement('div');
@@ -237,6 +256,7 @@ async function onArchiveChange(e){{
   const val = e.target.value;
   if (val === '__current__') {{
     ARTICLES = CURRENT_ARTICLES;
+    CATEGORIES = CURRENT_CATEGORIES;
     document.getElementById('meta-gen').textContent = CURRENT_GEN + ' KST 기준 자동 생성';
     document.getElementById('total-digits').textContent = CURRENT_TOTAL;
   }} else {{
@@ -244,6 +264,7 @@ async function onArchiveChange(e){{
       const res = await fetch('archive/' + val, {{ cache: 'no-store' }});
       const data = await res.json();
       ARTICLES = data.articles || [];
+      CATEGORIES = data.categories || categoriesFromArticles(ARTICLES);
       document.getElementById('meta-gen').textContent = data.generated_at + ' KST 기준 (지난 다이제스트)';
       document.getElementById('total-digits').textContent = data.total;
     }} catch (err) {{

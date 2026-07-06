@@ -12,8 +12,8 @@ import os
 import json
 from datetime import datetime, timedelta, timezone
 
-from news_collector import collect_all, collect_institute_rss, collect_affiliate_equity_news
-from dart_collector import fetch_recent_disclosures, fetch_company_disclosures
+from news_collector import collect_all, collect_institute_rss
+from dart_collector import fetch_recent_disclosures
 from kakao_sender import send_digest
 from html_report import generate_html, generate_archive_json
 
@@ -50,13 +50,9 @@ def format_kakao_line(item, cat_label):
     return f"📌 [{cat_label}] {title}  ({date_str})"
 
 
-def build_report_sections(conf, collected, affiliate_items, disclosure_items, institute_items):
-    """HTML 리포트용: 전체 수집 기사를 카테고리 순서대로 묶기. 관계기업 지분·공시가 최상단."""
-    sections = []
-    if affiliate_items:
-        sections.append((conf.get("affiliate_equity_monitoring", {}).get("label", "관계기업 지분·공시"), affiliate_items))
-    if disclosure_items:
-        sections.append(("공시", disclosure_items))
+def build_report_sections(conf, collected, disclosure_items, institute_items):
+    """HTML 리포트용: 전체 수집 기사를 카테고리 순서대로 묶기."""
+    sections = [("공시", disclosure_items)]
     if institute_items:
         sections.append(("기관 자료 (KOCCA 등)", institute_items))
     for cat_key in CATEGORY_PRIORITY:
@@ -73,13 +69,6 @@ def build_digest(conf, now_kst):
 
     collected = collect_all(conf, since_hours=lookback)
 
-    # 관계기업(이모션웨이브/리마엔터/엔백스) 지분·공시 - 매 슬롯 최우선 조회
-    affiliate_conf = conf.get("affiliate_equity_monitoring", {})
-    affiliate_companies = affiliate_conf.get("companies", [])
-    affiliate_dart_items = fetch_company_disclosures(affiliate_companies, since_hours=lookback)
-    affiliate_news_items = collect_affiliate_equity_news(affiliate_companies, since_hours=lookback)
-    affiliate_items = affiliate_dart_items + affiliate_news_items
-
     disclosure_items, institute_items = [], []
     if hour == 9:
         disclosure_items = fetch_recent_disclosures(since_hours=lookback)
@@ -87,10 +76,8 @@ def build_digest(conf, now_kst):
             conf.get("research_sources", {}).get("verified_rss_feeds", {}), since_hours=lookback
         )
 
-    # --- 카톡용: 섹션별 대표 1건만 (관계기업 지분·공시가 최상단) ---
+    # --- 카톡용: 섹션별 대표 1건만 ---
     kakao_lines = []
-    if affiliate_items:
-        kakao_lines.append(format_kakao_line(affiliate_items[0], affiliate_conf.get("label", "관계기업 지분·공시")))
     if disclosure_items:
         kakao_lines.append(format_kakao_line(disclosure_items[0], "공시"))
     if institute_items:
@@ -102,7 +89,7 @@ def build_digest(conf, now_kst):
             kakao_lines.append(format_kakao_line(items[0], cat_label))
 
     # --- HTML용: 전체 목록 ---
-    sections = build_report_sections(conf, collected, affiliate_items, disclosure_items, institute_items)
+    sections = build_report_sections(conf, collected, disclosure_items, institute_items)
 
     focus = conf.get("slot_focus", {}).get(f"{hour:02d}:00", "")
     generated_at_str = now_kst.strftime("%Y.%m.%d %H:%M")
