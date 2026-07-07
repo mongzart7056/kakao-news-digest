@@ -12,7 +12,7 @@
     },
     "digital_human": {
       "label": "디지털휴먼/가상인간",
-      "min_lookback_hours": 72,
+      "min_lookback_hours": 120,
       "keywords": [
         "디지털휴먼", "디지털 휴먼", "버추얼휴먼", "버추얼 휴먼",
         "가상인간", "가상 인간", "가상 휴먼",
@@ -23,8 +23,7 @@
       "noise_filter": {
         "include_query_in_filter": true,
         "query_context_terms": [
-          "버추얼휴먼", "버추얼 휴먼", "가상인간", "가상 인간", "가상 휴먼",
-          "AI 버추얼 휴먼", "메타휴먼", "virtual human", "digital human"
+          "버추얼휴먼", "버추얼 휴먼", "AI 버추얼 휴먼", "virtual human"
         ],
         "require_any_terms": [
           "디지털휴먼", "디지털 휴먼", "버추얼휴먼", "버추얼 휴먼",
