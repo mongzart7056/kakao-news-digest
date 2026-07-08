@@ -183,14 +183,20 @@ const CURRENT_CATEGORIES = {categories_json};
 const CURRENT_TOTAL = {total};
 const CURRENT_GEN = "{gen_str}";
 
-let ARTICLES = CURRENT_ARTICLES;
-let CATEGORIES = CURRENT_CATEGORIES;
+let ARTICLES = disclosureLast(CURRENT_ARTICLES);
+let CATEGORIES = disclosureLast(CURRENT_CATEGORIES);
 let active = "전체";
+
+function disclosureLast(list){{
+  const disclosure = list.filter(item => item.c === "공시");
+  const others = list.filter(item => item.c !== "공시");
+  return others.concat(disclosure);
+}}
 
 function categoriesFromArticles(articles){{
   const counts = new Map();
   articles.forEach(a => counts.set(a.c, (counts.get(a.c) || 0) + 1));
-  return [...counts.entries()].map(([c, count]) => ({{ c, count }}));
+  return disclosureLast([...counts.entries()].map(([c, count]) => ({{ c, count }})));
 }}
 
 function renderRail(){{
@@ -255,16 +261,16 @@ async function loadArchiveList(){{
 async function onArchiveChange(e){{
   const val = e.target.value;
   if (val === '__current__') {{
-    ARTICLES = CURRENT_ARTICLES;
-    CATEGORIES = CURRENT_CATEGORIES;
+    ARTICLES = disclosureLast(CURRENT_ARTICLES);
+    CATEGORIES = disclosureLast(CURRENT_CATEGORIES);
     document.getElementById('meta-gen').textContent = CURRENT_GEN + ' KST 기준 자동 생성';
     document.getElementById('total-digits').textContent = CURRENT_TOTAL;
   }} else {{
     try {{
       const res = await fetch('archive/' + val, {{ cache: 'no-store' }});
       const data = await res.json();
-      ARTICLES = data.articles || [];
-      CATEGORIES = data.categories || categoriesFromArticles(ARTICLES);
+      ARTICLES = disclosureLast(data.articles || []);
+      CATEGORIES = disclosureLast(data.categories || categoriesFromArticles(ARTICLES));
       document.getElementById('meta-gen').textContent = data.generated_at + ' KST 기준 (지난 다이제스트)';
       document.getElementById('total-digits').textContent = data.total;
     }} catch (err) {{

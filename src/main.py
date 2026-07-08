@@ -123,7 +123,7 @@ def stable_disclosure_items(fetched_items, now_kst):
 
 def build_report_sections(conf, collected, disclosure_items, institute_items):
     """HTML 리포트용: 전체 수집 기사를 카테고리 순서대로 묶기."""
-    sections = [("공시", disclosure_items)]
+    sections = []
     if institute_items:
         sections.append(("기관 자료 (KOCCA 등)", institute_items))
     for cat_key in CATEGORY_PRIORITY:
@@ -131,6 +131,7 @@ def build_report_sections(conf, collected, disclosure_items, institute_items):
         items = collected.get(cat_key, [])
         if items:
             sections.append((label, items))
+    sections.append(("공시", disclosure_items))
     return sections
 
 
